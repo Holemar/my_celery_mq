@@ -7,15 +7,21 @@ from celery import current_app
 import settings
 from tasks.fetch import process as fetch_task
 
-
 logger = logging.getLogger(__name__)
+
+
+# 约定每个定时任务文件都需要定义一个 SCHEDULE 变量，用于定义定时任务(不定义这个变量则不认为是定时任务)
+SCHEDULE = {
+    "schedule": 5,  # 每 10 秒执行一次，也可以用 crontab 函数定义定时任务
+    # 'schedule': crontab(minute='*/1'),  # 每分钟执行一次
+}
 
 
 # 定义任务函数，并使用celery.task装饰器进行装饰； task()参数：
 # name:可以显示指定任务的名字；
 # serializer：指定序列化的方法；
 # bind:一个bool值，设置是否绑定一个task的实例，如果把绑定，task实例会作为参数传递到任务方法中，可以访问task实例的所有的属性，即前面反序列化中那些属性
-@current_app.task(name='my_celery_mq.tasks.master_fetch', queue=settings.FETCH_TASK_QUEUE, bind=True)  # , priority=0)
+@current_app.task(name=f'{settings.APP_NAME}.{__name__}', queue=settings.FETCH_TASK_QUEUE, bind=True)  # , priority=0)
 def process(self):
     """
     抛出子任务

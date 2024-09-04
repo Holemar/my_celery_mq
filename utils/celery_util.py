@@ -1,13 +1,9 @@
 # -*- coding: utf-8 -*-
-import os
-import json
 import logging
 import inspect
-import importlib
 
 from celery import Celery, current_app, Task
-from celery.schedules import crontab
-from utils.import_util import import_submodules, discovery_items_in_package
+from utils.import_util import import_submodules
 
 
 logger = logging.getLogger(__name__)
@@ -25,61 +21,33 @@ if not hasattr(Celery, '_old_send_task'):
 # '''
 
 
-def set_base_task():
-    """重新赋予基类"""
-    from utils.celery_base_task import BaseTask
-    current_app.Task = BaseTask
-
-
 def load_task(path):
     """
     load class tasks
     """
-    set_base_task()  # 重新赋予基类，必须在task注册之前，才可以使task继承基类
+    # 重新赋予基类，必须在task注册之前，才可以使task继承基类
+    from .celery_base_task import BaseTask
+    current_app.Task = BaseTask
 
-    package_name = path.replace('/', '.')
-    package = importlib.import_module(package_name)
-    customize_tasks = discovery_items_in_package(package,
-                                                 lambda x: inspect.isclass(x) and x != Task and issubclass(x, Task))
-    for _n, _task_cls in customize_tasks:
-        logger.debug('Loading Task (CLS): %s', _n)
-        _task = _task_cls()
-        current_app.register_task(_task)
-
+    task_lookup = lambda x: inspect.isclass(x) and x != Task and x != BaseTask and issubclass(x, Task)
     modules = import_submodules(path)
     for k, _cls in modules.items():
+        task_name = None
+        members = inspect.getmembers(_cls, task_lookup)
+        # 使用 process 装饰器的类
         if hasattr(_cls, 'process'):
             logger.debug('Loading Task (PRC): %s', k)
             current_app.register_task(_cls.process)
-
-
-def parse_cron(cron):
-    """
-    parse cron format to celery cron
-    http://www.nncron.ru/help/EN/working/cron-format.htm
-    <Minute> <Hour> <Day_of_the_Month> <Month_of_the_Year> <Day_of_the_Week>
-    """
-    if not isinstance(cron, str):
-        return cron
-    if ' ' in cron:
-        minute, hour, day_of_month, month_of_year, day_of_week = cron.split(' ')
-        return crontab(minute=minute, hour=hour, day_of_month=day_of_month, day_of_week=day_of_week,
-                       month_of_year=month_of_year)
-    elif cron.isdigit():  # 数字表示秒数，每隔多少秒执行一次
-        return int(cron)
-
-
-def load_task_schedule(path):
-    if not os.path.exists(path):
-        return
-    schedule = {}
-    with open(path, 'r') as reader:
-        rules = json.load(reader)
-        for r_task in rules:
-            name = r_task.pop('name')
-            task = r_task.pop('task')
-            cron = parse_cron(r_task.pop('cron'))
-            schedule[name] = r_task  # 保留原始配置(允许配置更多参数)
-            schedule[name]['task'] = task
-            schedule[name]['schedule'] = cron
-    current_app.conf.beat_schedule = schedule
+            task_name = _cls.process.name
+        # 继承 Task 的类
+        if members:
+            _name, _task_cls = members[0]
+            logger.debug('Loading Task (CLS): %s', _name)
+            _task = _task_cls()
+            current_app.register_task(_task)
+            task_name = _task.name
+        # 加载定时器
+        beat_schedule = getattr(_cls, 'SCHEDULE', None)
+        if task_name and beat_schedule:
+            beat_schedule['task'] = task_name
+            current_app.conf.beat_schedule[task_name] = beat_schedule

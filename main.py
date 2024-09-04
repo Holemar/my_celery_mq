@@ -15,7 +15,6 @@ celery_app = Celery(settings.APP_NAME)
 celery_app.config_from_object(settings.CeleryConfig)
 
 celery_util.load_task('tasks')  # 加载 tasks 目录下的任务
-celery_util.load_task_schedule(os.path.join(settings.CURRENT_DIR, 'tasks', 'schedule.json'))  # 加载定时任务
 # logger.info(f'Celery config: {celery_app.conf}')
 
 
