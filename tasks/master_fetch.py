@@ -1,7 +1,7 @@
 # -*- coding:utf-8 -*-
-import time
 import uuid
 import logging
+from datetime import datetime
 
 from celery import current_app
 import settings
@@ -29,11 +29,11 @@ def process(self):
     使用self.request访问相关的属性，如：self.request.id, self.request.args, self.request.kwargs
     retries = int(self.request.retries)  # 重试次数
     """
-    _id = uuid.uuid4()
-    _t = int(time.time())
+    _id = uuid.uuid4()  # 测试这两种类型的异步任务传参
+    _t = datetime.now()
     logger.info(f'master_fetch task id: {_id}, ts:{_t}')
 
-    fetch_task.delay(str(_id), _t)
+    fetch_task.delay([_id], _t)
     # task.delay():这是apply_async方法的别名,但接受的参数较为简单；
     # task.apply_async(args=[arg1, arg2], kwargs={key:value, key:value},
     #     countdown : 设置该任务等待一段时间再执行，单位为s；

@@ -3,8 +3,13 @@ import logging
 import inspect
 
 from celery import Celery, current_app, Task
-from utils.import_util import import_submodules
+from kombu.serialization import register
 
+from .import_util import import_submodules
+from .bson_util import bson_dumps, bson_loads
+
+# 注册 celery 的 json 序列化
+register('json', bson_dumps, bson_loads, content_type='application/json', content_encoding='utf-8')
 
 logger = logging.getLogger(__name__)
 
