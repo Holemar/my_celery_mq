@@ -6,8 +6,11 @@ APP_NAME = os.environ.get('APP_NAME', 'my_celery_mq')
 CURRENT_DIR, _ = os.path.split(os.path.abspath(__file__))
 BASE_DIR = CURRENT_DIR or os.getcwd()  # 当前目录
 
-MONITOR_USERNAME = os.environ.get('MONITOR_USERNAME', '')
-MONITOR_PASSWORD = os.environ.get('MONITOR_PASSWORD', '')
+# celery 监控账号密码
+MONITOR_USERNAME = os.environ.get('MONITOR_USERNAME', 'admin')
+MONITOR_PASSWORD = os.environ.get('MONITOR_PASSWORD', '123456')
+# celery 任务数量限制,超过则认为任务堆积过多
+LIMIT_TASK = int(os.environ.get('LIMIT_TASK') or 1000)
 
 #  中间件，使用 RabbitMQ，pyamqp://username:Password@HOST:Port//v_host
 # DEFAULT_BROKER = 'amqp://development:password123456@134.175.100.239:5672//development_host'
@@ -22,7 +25,7 @@ DEFAULT_BROKER = f"sqlalchemy+sqlite:///{BASE_DIR}/db.sqlite"  # sqlite:///path/
 DEFAULT_RESULT_BACKEND = ''  # 不保存运行结果(使用 sqlite 作为 clery 数据储存时，没法保存结果)
 
 
-class CeleryConfig:
+class CELERY_CONFIG:
     broker_url = os.environ.get('BROKER_URL') or DEFAULT_BROKER  # 代理人的地址
     result_backend = os.environ.get('CELERY_RESULT_BACKEND') or DEFAULT_RESULT_BACKEND  # 运行结果存储地址
 
@@ -53,5 +56,5 @@ class CeleryConfig:
 FETCH_TASK_QUEUE = os.environ.get('FETCH_TASK_QUEUE') or 'fetch_queue'
 NOTIFY_TASK_QUEUE = os.environ.get('NOTIFY_TASK_QUEUE') or 'notify_queue'
 # 所有的队列
-ALL_QUEUES = (CeleryConfig.task_default_queue, FETCH_TASK_QUEUE, NOTIFY_TASK_QUEUE)
+ALL_QUEUES = (CELERY_CONFIG.task_default_queue, FETCH_TASK_QUEUE, NOTIFY_TASK_QUEUE)
 

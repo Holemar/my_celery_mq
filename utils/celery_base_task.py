@@ -21,7 +21,7 @@ class BaseTask(current_app.Task):
 
     # 任务开始前执行
     def before_start(self, task_id, args, kwargs):
-        logger.info(f'BaseTask before_start task_id: {task_id}, args: {args}, kwargs: {kwargs}')
+        logger.debug(f'BaseTask before_start task_id: {task_id}, args: {args}, kwargs: {kwargs}')
 
     # 任务失败时执行
     def on_failure(self, exc, task_id, args, kwargs, einfo):
@@ -29,18 +29,30 @@ class BaseTask(current_app.Task):
 
     # 任务成功时执行
     def on_success(self, retval, task_id, args, kwargs):
-        logger.info(f'BaseTask on_success task_id: {task_id}, args: {args}, kwargs: {kwargs}, 任务执行结果 retval: {retval}')
+        logger.debug(f'BaseTask on_success task_id: {task_id}, args: {args}, kwargs: {kwargs}, 任务执行结果 retval: {retval}')
 
     # 任务重试时执行
     def on_retry(self, exc, task_id, args, kwargs, einfo):
-        logger.error(f'BaseTask on_retry task_id: {task_id}, args: {args}, kwargs: {kwargs}, 错误的类型 exc: {exc}, 异常详细信息 einfo: {einfo}')
+        logger.warning(f'BaseTask on_retry task_id: {task_id}, args: {args}, kwargs: {kwargs}, 错误的类型 exc: {exc}, 异常详细信息 einfo: {einfo}')
 
     # 当任务执行完毕
     def after_return(self, status, retval, task_id, args, kwargs, einfo):
-        logger.info(f'BaseTask after_return task_id: {task_id}, args: {args}, kwargs: {kwargs}, 任务执行状态 status: {status}, 任务执行结果 retval: {retval}, 异常详细信息 einfo: {einfo}')
+        logger.debug(f'BaseTask after_return task_id: {task_id}, args: {args}, kwargs: {kwargs}, 任务执行状态 status: {status}, 任务执行结果 retval: {retval}, 异常详细信息 einfo: {einfo}')
+
+    @classmethod
+    def delay(cls, *args, **kwargs):
+        """提供直接异步执行的静态函数"""
+        obj = cls()
+        return obj.apply_async(args=args, kwargs=kwargs)
+
+    @classmethod
+    def sync(cls, *args, **kwargs):
+        """提供直接同步执行的静态函数"""
+        obj = cls()
+        return obj.run(*args, **kwargs)
 
     def __call__(self, *args, **kwargs):
-        logger.info(f'BaseTask task __call__ args: {args}, kwargs:{kwargs}')
+        logger.debug(f'BaseTask task __call__ args: {args}, kwargs:{kwargs}')
         start_time = time.time()
         task_name = self.__module__ or self.name
         try:

@@ -32,7 +32,8 @@ class NotifyTask(BaseTask, ABC):
         logger.info(f'NotifyTask task run id: {_id}, ts:{_t}, 重试次数: {retries}')
         # 观察异常情况、重试情况
         if retries <= 2:
-            a = 1 / 0
+            # a = 1 / 0
+            pass
         else:
             return True
 
