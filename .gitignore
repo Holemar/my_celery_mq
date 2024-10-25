@@ -3,13 +3,25 @@
 *.py[cod]
 *$py.class
 *.so
-*.log
+
 /.idea
 /Thumbs.db
 /venv/
 /.svn
-/.idea
 .project
 .pydevproject
 ~$*.docx
 *.docx
+
+# Celery
+celerybeat-schedule
+celerybeat-schedule.bak
+celerybeat-schedule.dat
+celerybeat-schedule.dir
+celerybeat.pid
+
+# stuff:
+*.log
+/logs/
+db.sqlite
+db.sqlite3

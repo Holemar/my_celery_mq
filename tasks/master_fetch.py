@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 # serializer：指定序列化的方法；
 # bind:一个bool值，设置是否绑定一个task的实例，如果把绑定，task实例会作为参数传递到任务方法中，可以访问task实例的所有的属性，即前面反序列化中那些属性
 @current_app.task(
-    name=f'{settings.APP_NAME}.{__name__}.maim_fetch',
+    name=f'{settings.APP_NAME}.{__name__}.maim_fetch',  # 约定的任务名，需确保唯一性
     queue=settings.FETCH_TASK_QUEUE,
     schedule=5,  # 每隔 5 秒执行一次任务
 )

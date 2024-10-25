@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 # 这里是继承 CeleryTask 类的异步任务写法，需要重写 run 方法。
 class NotifyTask(BaseTask, ABC):
-    name = f'{settings.APP_NAME}.{__name__}.NotifyTask'
+    name = f'{settings.APP_NAME}.{__name__}.NotifyTask'  # 约定的任务名，需确保唯一性
     queue = settings.NOTIFY_TASK_QUEUE  # 定义队列名称
     # 如果需要定时执行，可以设置 schedule 属性(不定义这个属性则不认为是定时任务，自动加载时约定的属性名，并非原生属性)，如：
     schedule = crontab(minute='*/1')  # 每分钟执行一次
@@ -49,7 +49,7 @@ class NotifyTask(BaseTask, ABC):
 @current_app.task(
     # base=NotifyTask,
     bind=True,
-    name=f'{settings.APP_NAME}.{__name__}.notify_process',
+    name=f'{settings.APP_NAME}.{__name__}.notify_process',  # 约定的任务名，需确保唯一性
     queue=settings.NOTIFY_TASK_QUEUE,  # 定义队列名称
     max_retries=3, default_retry_delay=10,  # 最大重试次数、默认重试间隔
     priority=0,  # 优先级
