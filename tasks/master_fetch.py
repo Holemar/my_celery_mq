@@ -5,27 +5,22 @@ from datetime import datetime
 
 from celery import current_app
 import settings
-from tasks.fetch import process as fetch_task
 
 logger = logging.getLogger(__name__)
-
-
-# 约定每个定时任务文件都需要定义一个 SCHEDULE 变量，用于定义定时任务(不定义这个变量则不认为是定时任务)
-SCHEDULE = {
-    "schedule": 5,  # 每 10 秒执行一次，也可以用 crontab 函数定义定时任务
-    # 'schedule': crontab(minute='*/1'),  # 每分钟执行一次
-}
 
 
 # 定义任务函数，并使用celery.task装饰器进行装饰； task()参数：
 # name:可以显示指定任务的名字；
 # serializer：指定序列化的方法；
 # bind:一个bool值，设置是否绑定一个task的实例，如果把绑定，task实例会作为参数传递到任务方法中，可以访问task实例的所有的属性，即前面反序列化中那些属性
-@current_app.task(name=f'{settings.APP_NAME}.{__name__}', queue=settings.FETCH_TASK_QUEUE, bind=True)  # , priority=0)
-def process(self):
+@current_app.task(
+    name=f'{settings.APP_NAME}.{__name__}.maim_fetch',
+    queue=settings.FETCH_TASK_QUEUE,
+    schedule=5,  # 每隔 5 秒执行一次任务
+)
+def maim_fetch():
     """
     抛出子任务
-    :param self: 任务实例( bind=True 时出现)
     使用self.request访问相关的属性，如：self.request.id, self.request.args, self.request.kwargs
     retries = int(self.request.retries)  # 重试次数
     """
@@ -53,4 +48,13 @@ def process(self):
     # celery_app.send_task('tasks.add', args=[3,4])  # 参数基本和apply_async函数一样
     # 但是send_task在发送的时候是不会检查tasks.add函数是否存在的，即使为空也会发送成功
     return True
+
+
+# 没有写 schedule 属性，不会定时执行，用于被其它地方调用
+@current_app.task(name=f'{settings.APP_NAME}.{__name__}.fetch_task', queue=settings.FETCH_TASK_QUEUE, bind=True)
+def fetch_task(self, msg_id, ts):
+    """
+    执行子任务
+    """
+    logger.info(f"Start fetch task for message: {msg_id}, ts: {ts}")
 

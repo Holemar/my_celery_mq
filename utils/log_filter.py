@@ -181,8 +181,7 @@ def task_logger_setup_handler(*args, **kwargs):
     """
     if file_handler:
         logger.addHandler(file_handler)
-    else:
-        logger.addHandler(stdout_handler)
+    logger.addHandler(stdout_handler)
     logger.addHandler(stderr_handler)
 
     logging.info("task log handler connected -> Global Logging")
@@ -198,8 +197,7 @@ def global_logger_setup_handler(*args, **kwargs):
 
     if file_handler:
         logger.addHandler(file_handler)
-    else:
-        logger.addHandler(stdout_handler)
+    logger.addHandler(stdout_handler)
     logger.addHandler(stderr_handler)
 
     logging.info("celery log handler connected -> Global Logging")
