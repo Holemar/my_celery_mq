@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 celery_app = Celery(settings.APP_NAME)
 celery_app.config_from_object(settings.CELERY_CONFIG)
 
-celery_util.load_task('tasks')  # 加载 tasks 目录下的任务
+celery_util.load_task('tasks', celery_app)  # 加载 tasks 目录下的任务
 # logger.info(f'Celery config: {celery_app.conf}')
 
 
