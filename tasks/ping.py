@@ -1,7 +1,9 @@
 # -*- coding:utf-8 -*-
+import time
 import logging
 from celery import current_app
 from celery.schedules import crontab
+
 import settings
 
 logger = logging.getLogger(__name__)
@@ -19,4 +21,6 @@ def process(self):
     """
     ping
     """
-    logger.info('ping task finished.')
+    # logger.warning('ping task start...')
+    # time.sleep(2)  # 模拟耗时操作
+    logger.warning('ping task finished.')

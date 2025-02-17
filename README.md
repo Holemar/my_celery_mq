@@ -3,8 +3,14 @@
     Use Python 3.8 or above
     本项目实际开发环境: python3.11
 
-- run_beat: python3 main.py -m beat
-- run_worker: python3 main.py -m worker
+## 启动命令
+```shell
+python3 main.py -m beat
+python3 main.py -m worker
+python3 main.py -m worker -l INFO -f logs/worker.log  # 指定日志文件路径和日志级别
+python3 main.py -m worker --pool gevent -c 10   # 开启10个协程并发
+```
+
 
 ## 项目说明
 - 本项目仅用于 celery 的练手，没有实际逻辑，便于阅读
@@ -22,7 +28,7 @@
     CELERY_RESULT_BACKEND 是celery的运行结果存储地址,可以是 RabbitMQ、redis、mongodb等等
 
 ## 安装依赖的第三方库
-```sh
+```shell
 pip install -r requirements.txt
 ```
 

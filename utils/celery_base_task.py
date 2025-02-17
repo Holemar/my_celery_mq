@@ -4,7 +4,6 @@ import time
 import socket
 import logging
 
-import requests
 from celery import current_app, Task
 
 
@@ -64,7 +63,7 @@ class BaseTask(current_app.Task):
             retries = self.request.retries
             countdown = TASK_RETRY_DELAY ** (retries + 1)  # 延迟多久再重试
             # 请求超时,登录异常,不记录error日志
-            if isinstance(err, (socket.timeout, requests.exceptions.ReadTimeout, TimeoutError,
+            if isinstance(err, (socket.timeout, TimeoutError,
                                 ConnectionResetError, AttributeError)):
                 logger.warning("执行任务出错: %s:%s: %s", task_name, (args[1:], kwargs), err)
             else:

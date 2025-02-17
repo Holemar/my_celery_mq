@@ -44,6 +44,9 @@ def run():
 
     if args.mode == 'worker':
         celery_argv += ['worker', '-l', args.loglevel, '--pool', args.pool, '-Q', args.queues]
+        if args.pool == 'gevent':
+            from gevent import monkey
+            monkey.patch_all()
         if args.concurrency:
             celery_argv += ['-c', args.concurrency]
         if args.prefetch_multiplier:
