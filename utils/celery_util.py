@@ -1,12 +1,15 @@
 # -*- coding: utf-8 -*-
+import os
+import socket
 import logging
 import inspect
 
-from celery import Celery, current_app, Task
+from celery import Celery
+from celery import current_app, Task
 from kombu.serialization import register
 
 from .import_util import import_submodules
-from .str_util import base64_decode
+from .str_util import base64_decode, decode2str
 from .json_util import load_json
 from .db_util import get_mongo_db, get_redis_client
 from .bson_util import bson_dumps, bson_loads
@@ -15,22 +18,42 @@ import settings
 # 定时任务配置
 BEAT_SCHEDULE = {}
 
+HOST_NAME = socket.gethostname()
+PID = os.getpid()  # 当前进程ID
+
 # 注册 celery 的 json 序列化
 register('json', bson_dumps, bson_loads, content_type='application/json', content_encoding='utf-8')
 
 logger = logging.getLogger(__name__)
 
-'''
+
 def custom_send_task(self, *args, **kwargs):
-    """celery 发任务补丁,每个beat及worker子任务执行前都经过它"""
-    logger.info(f'celery.Celery.send_task args:{args}, kwargs:{kwargs}')
+    """celery 发任务补丁,beat及worker抛出任务前都经过它(如果worker一直不抛出任务，则不会调用)"""
+    logger.debug(f'celery.Celery.send_task args:{args}, kwargs:{kwargs}')
     return self._old_send_task(*args, **kwargs)
 
+
+# 打补丁的方式来监控 beat 和 worker，虽然比较难看，但 flower 那种使用线程不断轮询的方式也不见得好多少。
+# 这种方式的弊端是，一个长任务的执行中途(远远超过了这里的超时时间)，会没统计到。
 if not hasattr(Celery, '_old_send_task'):
     _old_send_task = getattr(Celery, 'send_task')
     setattr(Celery, '_old_send_task', _old_send_task)
     setattr(Celery, 'send_task', custom_send_task)
-# '''
+
+'''
+from celery.task import Task
+
+def custom_task_call(self, *args, **kwargs):
+    """celery 执行任务补丁，主要是worker主任务执行前经过它"""
+    set_run()
+    return self._old_call(*args, **kwargs)
+
+# __call__ 函数补丁，会导致出错重试机制失效，故去掉
+_old_call = getattr(Task, '__call__')
+setattr(Task, '_old_call', _old_call)
+setattr(Task, '__call__', custom_task_call)
+setattr(Task, '_Task__call__', custom_task_call)
+'''
 
 
 def load_task(path, app=None):
@@ -104,6 +127,20 @@ def delete_repeat_task():
         pass  # todo: 未实现
 
 
+def clear_tasks():
+    """清除所有任务"""
+    broker_url = settings.CELERY_CONFIG.broker_url
+    if broker_url.startswith('mongodb://'):
+        db = get_mongo_db(broker_url)
+        db.messages.remove({})
+    elif broker_url.startswith('redis://'):
+        conn = get_redis_client(broker_url)
+        conn.flushdb()
+    # 使用 RabbitMQ
+    elif broker_url.startswith(('amqp://', 'pyamqp://', 'rpc://')):
+        pass  # todo: 未实现
+
+
 def delete_redis_repeat_task(conn, queue, total):
     """删除指定queue的重复任务
     :param conn: 作为celery broker的 redis 数据库连接
@@ -157,4 +194,45 @@ def delete_mongodb_repeat_task(db, queue, total):
                 delete_ids.add(d.get("_id"))
         if delete_ids:
             db.messages.remove({"queue": queue, "_id": {'$in': list(delete_ids)}})
+
+
+def get_pending_msg():
+    """获取正在准备执行的worker任务数量"""
+    from ..main import celery_app as app
+    total_msg = 0  # 总任务数
+    queues = settings.ALL_QUEUES
+    messages = {key: 0 for key in queues}  # 各队列的任务数
+    if not app.celery:
+        return total_msg, messages
+    for key in queues:
+        try:
+            channel = app.celery.connection().channel()
+            queue_info2 = channel.queue_declare(key, passive=False)
+            message_count = queue_info2.message_count
+            total_msg += message_count
+            messages[key] = message_count
+        except Exception as e:
+            logger.exception(f'获取队列{key}信息失败:{e}')
+
+    """
+    broker_url = app.celery.conf.broker_url
+    if broker_url.startswith('mongodb://'):
+        db = get_mongo_db(broker_url)
+        # total_msg = db.messages.count_documents()
+        for key in queues:
+            size = db.messages.count_documents({"queue": key})
+            total_msg += size
+            messages[key] = size
+    elif broker_url.startswith('redis://'):
+        conn = get_redis_client(broker_url)
+        for key in queues:
+            size = conn.llen(key)
+            total_msg += size
+            messages[key] = size
+    # 使用 RabbitMQ
+    elif broker_url.startswith(('amqp://', 'pyamqp://', 'rpc://')):
+        pass  # todo: 未实现
+    # """
+
+    return total_msg, messages
 

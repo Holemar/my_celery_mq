@@ -12,6 +12,7 @@ logger = logging.getLogger(__name__)
 TASK_TIMEOUT = float(os.environ.get('TASK_TIMEOUT') or 10)  # 异步任务执行超时时间
 TASK_MAX_RETRIES = int(os.environ.get('TASK_MAX_RETRIES') or 3)  # 任务重试次数
 TASK_RETRY_DELAY = int(os.environ.get('TASK_RETRY_DELAY') or 3)  # 任务重试时，延迟多久执行(单位:秒，每次指数增涨)
+TASK_COUNTDOWN = int(os.environ.get('TASK_COUNTDOWN') or 1)  # 异步任务，延迟多少秒执行
 
 
 class BaseTask(current_app.Task):
@@ -45,7 +46,7 @@ class BaseTask(current_app.Task):
     def delay(cls, *args, **kwargs):
         """提供直接异步执行的静态函数"""
         obj = cls()
-        return obj.apply_async(args=args, kwargs=kwargs)
+        return obj.apply_async(args=args, kwargs=kwargs, countdown=TASK_COUNTDOWN)
 
     @classmethod
     def sync(cls, *args, **kwargs):
