@@ -26,7 +26,9 @@ def run():
     """
     parser = argparse.ArgumentParser()
     parser.add_argument('-m', '--mode', choices=['worker', 'beat'])
-    parser.add_argument('--pool', choices=['solo', 'gevent', 'prefork', 'eventlet', 'processes', 'threads', 'custom'], default='solo')  # 并发模型，可选：prefork (默认，multiprocessing), eventlet, gevent, threads.
+    parser.add_argument('--pool',
+                        choices=['solo', 'gevent', 'prefork', 'eventlet', 'processes', 'threads', 'custom'],
+                        default='solo')  # 并发模型，可选：prefork (默认，multiprocessing), eventlet, gevent, threads.
     parser.add_argument('-l', '--loglevel', default='INFO')  # 日志级别，可选：DEBUG, INFO, WARNING, ERROR, CRITICAL, FATAL
     parser.add_argument('-c', '--concurrency', default='')  # 并发数量，prefork 模型下就是子进程数量，默认等于 CPU 核心数
     parser.add_argument('-Q', '--queues', default=','.join(settings.ALL_QUEUES))
