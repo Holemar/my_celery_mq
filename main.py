@@ -17,6 +17,8 @@ celery_app.config_from_object(settings.CELERY_CONFIG)
 celery_util.load_task('tasks', celery_app)  # 加载 tasks 目录下的任务
 # logger.info(f'Celery config: {celery_app.conf}')
 
+celery_util.clear_tasks()  # 清除 celery 旧任务
+
 
 def run():
     """
@@ -24,7 +26,7 @@ def run():
     """
     parser = argparse.ArgumentParser()
     parser.add_argument('-m', '--mode', choices=['worker', 'beat'])
-    parser.add_argument('--pool', choices=['solo', 'gevent', 'prefork', 'eventlet'], default='solo')  # 并发模型，可选：prefork (默认，multiprocessing), eventlet, gevent, threads.
+    parser.add_argument('--pool', choices=['solo', 'gevent', 'prefork', 'eventlet', 'processes', 'threads', 'custom'], default='solo')  # 并发模型，可选：prefork (默认，multiprocessing), eventlet, gevent, threads.
     parser.add_argument('-l', '--loglevel', default='INFO')  # 日志级别，可选：DEBUG, INFO, WARNING, ERROR, CRITICAL, FATAL
     parser.add_argument('-c', '--concurrency', default='')  # 并发数量，prefork 模型下就是子进程数量，默认等于 CPU 核心数
     parser.add_argument('-Q', '--queues', default=','.join(settings.ALL_QUEUES))
@@ -44,9 +46,11 @@ def run():
 
     if args.mode == 'worker':
         celery_argv += ['worker', '-l', args.loglevel, '--pool', args.pool, '-Q', args.queues]
+        '''
         if args.pool == 'gevent':
             from gevent import monkey
-            monkey.patch_all()
+            monkey.patch_all()  # 打上补丁，则不能再使用 async 函数写任务。否则协程轮询会报错。
+        '''
         if args.concurrency:
             celery_argv += ['-c', args.concurrency]
         if args.prefetch_multiplier:

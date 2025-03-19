@@ -3,6 +3,8 @@ import os
 import time
 import socket
 import logging
+import asyncio
+import inspect
 
 from celery import current_app, Task
 
@@ -18,6 +20,7 @@ TASK_COUNTDOWN = int(os.environ.get('TASK_COUNTDOWN') or 1)  # 异步任务，�
 class BaseTask(current_app.Task):
     max_retries = 3  # 最大重试次数
     default_retry_delay = 1  # 默认重试间隔(秒)
+    event_loop = None  # 事件循环
 
     ''' 用到的再拿出来，没有用到的先注释掉
     def before_start(self, task_id, args, kwargs):
@@ -43,6 +46,15 @@ class BaseTask(current_app.Task):
     '''
 
     @classmethod
+    def _get_event_loop(cls):
+        """获取事件循环"""
+        # 创建新的事件循环，避免复用已有 loop 导致问题
+        if cls.event_loop is None:
+            cls.event_loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(cls.event_loop)
+        return cls.event_loop
+
+    @classmethod
     def delay(cls, *args, **kwargs):
         """提供直接异步执行的静态函数"""
         obj = cls()
@@ -52,14 +64,37 @@ class BaseTask(current_app.Task):
     def sync(cls, *args, **kwargs):
         """提供直接同步执行的静态函数"""
         obj = cls()
-        return obj.run(*args, **kwargs)
+        return obj._run_fun(obj.run, *args, **kwargs)
+
+    @classmethod
+    def _run_fun(cls, fun, *args, **kwargs):
+        """执行函数"""
+        # 这里先执行，是因为 inspect.iscoroutinefunction(fun) 判断不出来 async 函数，
+        # 同理 inspect.isgeneratorfunction(fun) 也判断不出来 yield 生成器函数。 使用 inspect.unwrap 解包也没用。
+        res = fun(*args, **kwargs)
+
+        # async 异步函数
+        if inspect.iscoroutine(res):
+            return asyncio.run(res)
+            # loop = cls._get_event_loop()
+            # return loop.run_until_complete(res)
+
+        # yield 生成器函数(途中各 yield 语句返回的值会被丢弃，只返回最后 return 的值)
+        if inspect.isgenerator(res):
+            while True:
+                try:
+                    value = next(res)
+                except StopIteration as e:
+                    return e.value or {}
+        return res
 
     def __call__(self, *args, **kwargs):
         logger.debug(f'BaseTask task __call__ args: {args}, kwargs:{kwargs}')
         start_time = time.time()
         task_name = self.__module__ or self.name
         try:
-            return super().__call__(*args, **kwargs)
+            # return super().__call__(*args, **kwargs)
+            return self._run_fun(super().__call__, *args, **kwargs)
         except Exception as err:
             retries = self.request.retries
             countdown = TASK_RETRY_DELAY ** (retries + 1)  # 延迟多久再重试
