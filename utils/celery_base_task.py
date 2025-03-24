@@ -43,6 +43,7 @@ class BaseTask(current_app.Task):
     def after_return(self, status, retval, task_id, args, kwargs, einfo):
         """任务执行完毕"""
         logger.debug(f'BaseTask after_return task_id: {task_id}, args: {args}, kwargs: {kwargs}, 任务执行状态 status: {status}, 任务执行结果 retval: {retval}, 异常详细信息 einfo: {einfo}')
+    '''
 
     @classmethod
     def _get_event_loop(cls):
@@ -52,7 +53,6 @@ class BaseTask(current_app.Task):
             cls.event_loop = asyncio.new_event_loop()
             asyncio.set_event_loop(cls.event_loop)
         return cls.event_loop
-    '''
 
     @classmethod
     def delay(cls, *args, **kwargs):
@@ -75,17 +75,23 @@ class BaseTask(current_app.Task):
 
         # async 异步函数
         if inspect.iscoroutine(res):
-            return asyncio.run(res)
-            # loop = cls._get_event_loop()
-            # return loop.run_until_complete(res)
+            # return asyncio.run(res)
+            loop = cls._get_event_loop()
+            return loop.run_until_complete(res)
 
-        # yield 生成器函数(途中各 yield 语句返回的值会被丢弃，只返回最后 return 的值)
+        # yield 生成器函数(途中各 yield 语句返回的值会被拼接到一起，最后以 list 形式一起返回)
         if inspect.isgenerator(res):
+            results = []
             while True:
                 try:
                     value = next(res)
+                    results.append(value)
                 except StopIteration as e:
-                    return e.value or {}
+                    value = e.value or None
+                    if value is not None:
+                        results.append(value)
+                    return results
+
         return res
 
     def __call__(self, *args, **kwargs):
