@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
     bind=True,  # 绑定任务实例，使得任务可以访问任务实例的属性和方法(不绑定则函数内无法使用 self 参数)
     # 如果需要定时执行，可以设置 schedule 属性(不定义这个属性则不认为是定时任务，自动加载时约定的属性名，并非原生属性)，如：
     # schedule=crontab(minute='*/1'),  # 每分钟执行一次
-    schedule=1,  # 每 1 秒执行一次，也可以用 crontab 函数定义定时任务
+    # schedule=1,  # 每 1 秒执行一次，也可以用 crontab 函数定义定时任务
 )
 def test_async_ping(self):
     """
